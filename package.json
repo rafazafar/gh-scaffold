@@ -1,0 +1,50 @@
+{
+  "name": "gh-scaffold",
+  "version": "0.1.0",
+  "description": "CLI to scan a repo and generate missing GitHub community health files (.github templates, CONTRIBUTING, SECURITY, etc.)",
+  "type": "module",
+  "bin": {
+    "gh-scaffold": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "templates"
+  ],
+  "main": "dist/index.js",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "scripts": {
+    "dev": "node --loader tsx src/cli.ts",
+    "build": "tsup src/index.ts src/cli.ts --format esm --dts",
+    "test": "vitest run",
+    "prepare": "npm run build"
+  },
+  "keywords": [
+    "github",
+    "templates",
+    "contributing",
+    "security",
+    "code-of-conuct",
+    "cli",
+    "scaffold"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "commander": "^14.0.3",
+    "fs-extra": "^11.3.3",
+    "yaml": "^2.8.2"
+  },
+  "devDependencies": {
+    "@types/fs-extra": "^11.0.4",
+    "@types/node": "^25.2.0",
+    "tsup": "^8.5.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
+  }
+}
