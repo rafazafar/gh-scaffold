@@ -5,7 +5,7 @@ import { createPatch } from 'diff';
 import { detectRepoMeta } from './detect.js';
 import { loadConfig } from './config.js';
 import type { PresetName, GhScaffoldConfig } from './config.js';
-import { resolveTemplatesDir, templateNameFor } from './templates.js';
+import { resolveTemplatesDir, templateNameFor, licenseTemplateName } from './templates.js';
 import { upsertManagedBlock, wrapManagedBlock } from './markers.js';
 
 export type ScanResult = {
@@ -29,6 +29,7 @@ export type ApplyOptions = {
   diff?: boolean;
   update?: boolean;
   issueTemplates?: 'markdown' | 'forms';
+  license?: 'none' | 'mit' | 'apache-2.0' | 'gpl-3.0';
   templatesDir?: string;
   scopeMode?: 'root' | 'packages' | 'all' | undefined;
 };
@@ -59,7 +60,7 @@ const COMMUNITY_FILES: Array<{ key: string; relPath: string; essential: boolean;
   { key: 'GOVERNANCE', relPath: 'GOVERNANCE.md', essential: false, preset: 'strict' },
   { key: 'MAINTAINERS', relPath: 'MAINTAINERS.md', essential: false, preset: 'strict' },
   { key: 'CHANGELOG', relPath: 'CHANGELOG.md', essential: false, preset: 'strict' },
-  { key: 'LICENSE_MIT', relPath: 'LICENSE', essential: false, preset: 'strict' },
+  { key: 'LICENSE', relPath: 'LICENSE', essential: false, preset: 'strict' },
 ];
 
 function abs(repoPath: string, rel: string) {
@@ -217,7 +218,16 @@ async function buildFileContent(
   key: string,
   config: GhScaffoldConfig
 ): Promise<string> {
-  const tpl = templateNameFor(key, config.issueTemplates ?? 'markdown');
+  const issueFormat = config.issueTemplates ?? 'markdown';
+
+  let tpl = templateNameFor(key, issueFormat);
+  if (key === 'LICENSE') {
+    const chosen = licenseTemplateName(config.license ?? 'none');
+    // If license is none, we should not generate a LICENSE at all.
+    if (!chosen) throw new Error('LICENSE generation disabled (license=none)');
+    tpl = chosen;
+  }
+
   if (!tpl) throw new Error(`No template for ${key}`);
 
   let content = await readTemplate(templatesDir, tpl);
@@ -260,8 +270,14 @@ async function applyToSingleRepo(repoPath: string, opts: ApplyOptions, config: G
 
   const targets = chooseTargetFiles(preset, opts.minimal);
 
+  const licenseChoice = (opts.license ?? config.license ?? 'none');
+
   for (const f of targets) {
     if (!keyMatches(f.key, only, skip)) continue;
+    if (f.key === 'LICENSE' && licenseChoice === 'none') {
+      skipped.push('LICENSE (license=none)');
+      continue;
+    }
 
     const rel = f.key === 'ISSUE_TEMPLATE_BUG' || f.key === 'ISSUE_TEMPLATE_FEATURE'
       ? resolveIssueRelPath(f.relPath, (opts.issueTemplates ?? config.issueTemplates ?? 'markdown'), f.key)
@@ -276,6 +292,7 @@ async function applyToSingleRepo(repoPath: string, opts: ApplyOptions, config: G
       desired = await buildFileContent(templatesDir, f.key, {
         ...config,
         ...(opts.issueTemplates ? { issueTemplates: opts.issueTemplates } : {}),
+        ...(opts.license ? { license: opts.license as any } : {}),
       });
     } catch (e: any) {
       warnings.push(String(e?.message ?? e));

@@ -56,7 +56,13 @@ gh-scaffold -w
 # or: npx gh-scaffold -w
 ```
 
-Interactive init:
+Interactive mode:
+```bash
+gh-scaffold -i
+# or: npx gh-scaffold -i
+```
+
+Interactive init (alias):
 ```bash
 gh-scaffold init
 ```
@@ -78,6 +84,13 @@ Presets:
 gh-scaffold -w --preset minimal
 gh-scaffold -w --preset standard
 gh-scaffold -w --preset strict
+```
+
+License selection:
+```bash
+gh-scaffold -w --preset strict --license mit
+gh-scaffold -w --preset strict --license apache-2.0
+gh-scaffold -w --preset strict --license gpl-3.0
 ```
 
 Issue templates format:
@@ -114,6 +127,7 @@ Example:
 ```yml
 preset: strict
 issueTemplates: forms
+license: mit
 contacts:
   supportUrl: https://github.com/OWNER/REPO/discussions
   securityEmail: security@example.com

@@ -19,6 +19,7 @@ program
   .option('--issue-templates <format>', 'Issue templates (apply mode): markdown|forms', 'markdown')
   .option('--templates <path>', 'Custom templates directory (apply mode)')
   .option('--scope <mode>', 'Scope mode (apply mode): root|packages|all')
+  .option('--license <type>', 'License (apply mode): none|mit|apache-2.0|gpl-3.0', 'none')
   .option('--force', 'Overwrite existing files (apply mode)', false)
   .option('--update', 'Update mode (apply mode; managed markers for markdown only)', false)
   .option('--dry-run', 'Do not write files (apply mode)', false)
@@ -26,7 +27,99 @@ program
   .option('--diff', 'Show unified diffs (apply mode)', false)
   .option('--only <keys>', 'Comma-separated keys to include (apply mode)', '')
   .option('--skip <keys>', 'Comma-separated keys to skip (apply mode)', '')
+  .option('-i, --interactive', 'Interactive mode (prompts for options)', false)
   .action(async (opts) => {
+    // Interactive mode (prompts for options, then scan or write)
+    if (opts.interactive) {
+      const loaded = await loadConfig(opts.repo, opts.config);
+      const answers = await inquirer.prompt([
+        {
+          type: 'list',
+          name: 'preset',
+          message: 'Preset:',
+          choices: [
+            { name: 'minimal (CONTRIBUTING, SECURITY, PR template)', value: 'minimal' },
+            { name: 'standard (+ issue templates, CoC, SUPPORT)', value: 'standard' },
+            { name: 'strict (+ CODEOWNERS, FUNDING, GOVERNANCE, LICENSE, etc.)', value: 'strict' },
+          ],
+          default: loaded.config.preset ?? opts.preset ?? 'standard',
+        },
+        {
+          type: 'list',
+          name: 'issueTemplates',
+          message: 'Issue templates format:',
+          choices: [
+            { name: 'Markdown (.md)', value: 'markdown' },
+            { name: 'Issue Forms (.yml)', value: 'forms' },
+          ],
+          default: loaded.config.issueTemplates ?? opts.issueTemplates ?? 'markdown',
+        },
+        {
+          type: 'list',
+          name: 'license',
+          message: 'License file:',
+          choices: [
+            { name: 'none (do not generate LICENSE)', value: 'none' },
+            { name: 'MIT', value: 'mit' },
+            { name: 'Apache-2.0', value: 'apache-2.0' },
+            { name: 'GPL-3.0', value: 'gpl-3.0' },
+          ],
+          default: loaded.config.license ?? opts.license ?? 'none',
+        },
+        {
+          type: 'confirm',
+          name: 'write',
+          message: 'Write missing files now?',
+          default: false,
+        },
+        {
+          type: 'confirm',
+          name: 'dryRun',
+          message: 'Dry run (preview without writing)?',
+          default: true,
+          when: (a) => a.write,
+        },
+        {
+          type: 'confirm',
+          name: 'diff',
+          message: 'Show diffs?',
+          default: true,
+          when: (a) => a.write,
+        },
+      ]);
+
+      if (!answers.write) {
+        const result = await scanRepo(opts.repo, opts.config);
+        process.stdout.write(formatScanReport(result));
+        process.stdout.write('\nTip: run `gh-scaffold -w --preset ' + answers.preset + '` to write files.\n');
+        return;
+      }
+
+      const res = await applyScaffold({
+        repoPath: opts.repo,
+        configPath: opts.config,
+        preset: answers.preset,
+        issueTemplates: answers.issueTemplates,
+        license: answers.license,
+        templatesDir: opts.templates,
+        scopeMode: opts.scope,
+        force: !!opts.force,
+        update: !!opts.update,
+        dryRun: !!answers.dryRun,
+        diff: !!answers.diff,
+        print: !!opts.print,
+        only: csv(opts.only),
+        skip: csv(opts.skip),
+      });
+
+      process.stdout.write(res.summary + '\n');
+      if (res.diffs.length) {
+        process.stdout.write('\nDiffs:\n');
+        for (const d of res.diffs) process.stdout.write(d.patch + '\n');
+      }
+      return;
+    }
+
     // Default command: scan (no subcommand)
     if (!opts.write) {
       const result = await scanRepo(opts.repo, opts.config);
@@ -44,6 +137,7 @@ program
       configPath: opts.config,
       preset: opts.preset,
       issueTemplates: opts.issueTemplates,
+      license: opts.license,
       templatesDir: opts.templates,
       scopeMode: opts.scope,
       force: !!opts.force,
@@ -128,6 +222,18 @@ program
         default: loaded.config.issueTemplates ?? 'markdown',
       },
       {
+        type: 'list',
+        name: 'license',
+        message: 'License file:',
+        choices: [
+          { name: 'none (do not generate LICENSE)', value: 'none' },
+          { name: 'MIT', value: 'mit' },
+          { name: 'Apache-2.0', value: 'apache-2.0' },
+          { name: 'GPL-3.0', value: 'gpl-3.0' },
+        ],
+        default: loaded.config.license ?? 'none',
+      },
+      {
         type: 'input',
         name: 'supportUrl',
         message: 'Support URL (e.g. Discussions link) (optional):',
@@ -168,6 +274,7 @@ program
     const overlay: GhScaffoldConfig = {
       preset: answers.preset,
       issueTemplates: answers.issueTemplates,
+      license: answers.license,
       contacts: {
         supportUrl: answers.supportUrl || undefined,
         securityEmail: answers.securityEmail || undefined,
@@ -184,6 +291,7 @@ program
       repoPath,
       preset: (config.preset ?? 'standard') as any,
       issueTemplates: (config.issueTemplates ?? 'markdown') as any,
+      license: (config.license ?? 'none') as any,
       diff: answers.diff,
       dryRun: answers.dryRun,
       scopeMode: config.scope?.mode,

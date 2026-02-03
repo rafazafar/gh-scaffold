@@ -2,6 +2,7 @@ import path from 'node:path';
 import fs from 'fs-extra';
 import { fileURLToPath } from 'node:url';
 import { GhScaffoldConfig, IssueTemplateFormat } from './config.js';
+import type { LicenseType } from './config.js';
 
 export function builtinTemplatesDir(): string {
   return fileURLToPath(new URL('../templates/', import.meta.url));
@@ -15,6 +16,19 @@ export async function resolveTemplatesDir(repoPath: string, config: GhScaffoldCo
     if (await fs.pathExists(p)) return p;
   }
   return builtinTemplatesDir();
+}
+
+export function licenseTemplateName(license: LicenseType): string | null {
+  switch (license) {
+    case 'mit':
+      return 'LICENSE_MIT';
+    case 'apache-2.0':
+      return 'LICENSE_APACHE_2_0';
+    case 'gpl-3.0':
+      return 'LICENSE_GPL_3_0';
+    default:
+      return null;
+  }
 }
 
 export function templateNameFor(key: string, issueFormat: IssueTemplateFormat): string | null {
@@ -33,7 +47,7 @@ export function templateNameFor(key: string, issueFormat: IssueTemplateFormat): 
     GOVERNANCE: 'GOVERNANCE.md',
     MAINTAINERS: 'MAINTAINERS.md',
     CHANGELOG: 'CHANGELOG.md',
-    LICENSE_MIT: 'LICENSE_MIT',
+    LICENSE: 'LICENSE_MIT',
   };
 
   const mapForms: Record<string, string> = {

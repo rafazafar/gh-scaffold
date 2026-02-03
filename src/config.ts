@@ -6,9 +6,12 @@ export type PresetName = 'minimal' | 'standard' | 'strict';
 
 export type IssueTemplateFormat = 'markdown' | 'forms';
 
+export type LicenseType = 'none' | 'mit' | 'apache-2.0' | 'gpl-3.0';
+
 export type GhScaffoldConfig = {
   preset?: PresetName;
   issueTemplates?: IssueTemplateFormat;
+  license?: LicenseType;
   contacts?: {
     supportUrl?: string;
     securityEmail?: string;
@@ -43,6 +46,7 @@ export type LoadedConfig = {
 const DEFAULT_CONFIG: GhScaffoldConfig = {
   preset: 'standard',
   issueTemplates: 'markdown',
+  license: 'none',
   behavior: { update: false, managedMarkers: true },
   scope: { mode: 'root', packagesGlobs: ['packages/*', 'apps/*'] },
 };

@@ -176,7 +176,7 @@ describe('scaffold', () => {
 
   it('strict preset writes extra files (license/changelog/etc)', async () => {
     const repo = await makeTempDir();
-    const res = await applyScaffold({ repoPath: repo, preset: 'strict', only: ['CHANGELOG', 'LICENSE_MIT', 'GOVERNANCE', 'MAINTAINERS'] });
+    const res = await applyScaffold({ repoPath: repo, preset: 'strict', license: 'mit', only: ['CHANGELOG', 'LICENSE', 'GOVERNANCE', 'MAINTAINERS'] });
     expect(res.written).toContain('CHANGELOG.md');
     expect(res.written).toContain('LICENSE');
     expect(await fs.pathExists(path.resolve(repo, 'LICENSE'))).toBe(true);
