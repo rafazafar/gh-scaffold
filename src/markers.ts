@@ -21,5 +21,6 @@ export function upsertManagedBlock(existing: string, id: string, newContent: str
 }
 
 function escapeRegExp(s: string) {
-  return s.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&');
+  // Escape regex metacharacters, including literal `]` and `\`.
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
