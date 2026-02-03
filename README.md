@@ -24,7 +24,7 @@ Strict preset also includes:
 - `GOVERNANCE.md`
 - `MAINTAINERS.md`
 - `CHANGELOG.md`
-- `LICENSE` (MIT template)
+- `LICENSE` (MIT/Apache/GPL)
 
 ## Install
 
@@ -44,34 +44,35 @@ node dist/cli.js --help
 
 ## Quick start
 
-Scan current directory (default command):
+Interactive (default): scan → choose missing files → preview/write
 ```bash
-gh-scaffold
-# or: npx gh-scaffold
+npx gh-scaffold
 ```
 
-Write missing files:
+Non-interactive scan:
 ```bash
-gh-scaffold -w
-# or: npx gh-scaffold -w
+npx gh-scaffold --scan
+# or machine-readable:
+npx gh-scaffold --scan --json
 ```
 
-Interactive mode:
+Non-interactive write:
 ```bash
-gh-scaffold -i
-# or: npx gh-scaffold -i
+npx gh-scaffold -w
+# preview:
+npx gh-scaffold -w --dry-run --diff
 ```
 
-Interactive init (alias):
+Interactive init (writes a config file too):
 ```bash
-gh-scaffold init
+npx gh-scaffold init
 ```
 
 ## Common usage
 
 Preview what would change:
 ```bash
-gh-scaffold --dry-run --diff -w
+gh-scaffold -w --dry-run --diff
 ```
 
 Overwrite existing:

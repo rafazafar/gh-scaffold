@@ -153,11 +153,14 @@ export function formatScanReport(r: ScanResult): string {
 
   if (r.missing.length) {
     lines.push('');
-    lines.push('Next: to generate missing files, run:');
-    lines.push('  gh-scaffold apply --preset standard');
+    lines.push('Next: to generate missing files, run (interactive):');
+    lines.push('  gh-scaffold');
+    lines.push('');
+    lines.push('Or non-interactive write:');
+    lines.push('  gh-scaffold -w --preset standard');
     lines.push('');
     lines.push('Preview with diff (no writes):');
-    lines.push('  gh-scaffold apply --preset standard --dry-run --diff');
+    lines.push('  gh-scaffold -w --preset standard --dry-run --diff');
   }
 
   lines.push('');

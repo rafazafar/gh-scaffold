@@ -10,10 +10,12 @@ const program = new Command();
 program
   .name('gh-scaffold')
   .description('Scan a repo and generate missing GitHub community health files (.github templates, CONTRIBUTING, SECURITY, etc.)')
-  .version('0.3.0')
+  .version('1.0.0')
   .option('-r, --repo <path>', 'Path to repo (default: current directory)', '.')
   .option('-c, --config <path>', 'Path to config file (default: auto-detect)')
   .option('--json', 'Output JSON (scan mode)', false)
+  .option('--scan', 'Force non-interactive scan (legacy default)', false)
+  .option('--non-interactive', 'Disable prompts (CI-friendly)', false)
   .option('-w, --write', 'Write missing files (apply mode)', false)
   .option('--preset <preset>', 'Preset (apply mode): minimal|standard|strict', 'standard')
   .option('--issue-templates <format>', 'Issue templates (apply mode): markdown|forms', 'markdown')
@@ -27,22 +29,33 @@ program
   .option('--diff', 'Show unified diffs (apply mode)', false)
   .option('--only <keys>', 'Comma-separated keys to include (apply mode)', '')
   .option('--skip <keys>', 'Comma-separated keys to skip (apply mode)', '')
-  .option('-i, --interactive', 'Interactive mode (prompts for options)', false)
+  .option('-i, --interactive', 'Interactive mode (prompts; default when TTY and no flags)', false)
   .action(async (opts) => {
-    // Interactive mode (prompts for options, then scan or write)
-    if (opts.interactive) {
+    const isTTY = !!process.stdout.isTTY && !!process.stdin.isTTY;
+    const wantsInteractive = (opts.interactive || (isTTY && !opts.nonInteractive && !opts.scan && !opts.json && !opts.write));
+
+    if (wantsInteractive) {
+      const scan = await scanRepo(opts.repo, opts.config);
+
+      // Always start by showing the scan result (quick context)
+      process.stdout.write(formatScanReport(scan));
+
+      if (!scan.missing.length) return;
+
       const loaded = await loadConfig(opts.repo, opts.config);
+
+      const choices = scan.missing.map((k) => {
+        const p = scan.files[k]?.path ?? '';
+        return { name: p ? `${k}  (${p})` : k, value: k, checked: true };
+      });
+
       const answers = await inquirer.prompt([
         {
-          type: 'list',
-          name: 'preset',
-          message: 'Preset:',
-          choices: [
-            { name: 'minimal (CONTRIBUTING, SECURITY, PR template)', value: 'minimal' },
-            { name: 'standard (+ issue templates, CoC, SUPPORT)', value: 'standard' },
-            { name: 'strict (+ CODEOWNERS, FUNDING, GOVERNANCE, LICENSE, etc.)', value: 'strict' },
-          ],
-          default: loaded.config.preset ?? opts.preset ?? 'standard',
+          type: 'checkbox',
+          name: 'only',
+          message: 'Select missing items to generate:',
+          choices,
+          validate: (arr: string[]) => (arr?.length ? true : 'Select at least one item.'),
         },
         {
           type: 'list',
@@ -53,66 +66,63 @@ program
             { name: 'Issue Forms (.yml)', value: 'forms' },
           ],
           default: loaded.config.issueTemplates ?? opts.issueTemplates ?? 'markdown',
+          when: (a) => a.only.includes('ISSUE_TEMPLATE_BUG') || a.only.includes('ISSUE_TEMPLATE_FEATURE') || a.only.includes('ISSUE_TEMPLATE_CONFIG'),
         },
         {
           type: 'list',
           name: 'license',
           message: 'License file:',
           choices: [
-            { name: 'none (do not generate LICENSE)', value: 'none' },
+            { name: 'none (skip LICENSE)', value: 'none' },
             { name: 'MIT', value: 'mit' },
             { name: 'Apache-2.0', value: 'apache-2.0' },
             { name: 'GPL-3.0', value: 'gpl-3.0' },
           ],
           default: loaded.config.license ?? opts.license ?? 'none',
-        },
-        {
-          type: 'confirm',
-          name: 'write',
-          message: 'Write missing files now?',
-          default: false,
+          when: (a) => a.only.includes('LICENSE'),
         },
         {
           type: 'confirm',
           name: 'dryRun',
-          message: 'Dry run (preview without writing)?',
+          message: 'Dry run (preview without writing files)?',
           default: true,
-          when: (a) => a.write,
         },
         {
           type: 'confirm',
           name: 'diff',
           message: 'Show diffs?',
           default: true,
-          when: (a) => a.write,
+        },
+        {
+          type: 'confirm',
+          name: 'force',
+          message: 'Overwrite existing files if present?',
+          default: false,
         },
       ]);
-
-      if (!answers.write) {
-        const result = await scanRepo(opts.repo, opts.config);
-        process.stdout.write(formatScanReport(result));
-        process.stdout.write('\nTip: run `gh-scaffold -w --preset ' + answers.preset + '` to write files.\n');
-        return;
-      }
 
       const res = await applyScaffold({
         repoPath: opts.repo,
         configPath: opts.config,
-        preset: answers.preset,
-        issueTemplates: answers.issueTemplates,
-        license: answers.license,
+        // use strict so any selected keys are in-scope; selection is controlled via --only
+        preset: 'strict',
+        issueTemplates: answers.issueTemplates ?? loaded.config.issueTemplates ?? opts.issueTemplates,
+        license: answers.license ?? loaded.config.license ?? opts.license,
         templatesDir: opts.templates,
         scopeMode: opts.scope,
-        force: !!opts.force,
+        force: !!answers.force,
         update: !!opts.update,
         dryRun: !!answers.dryRun,
         diff: !!answers.diff,
         print: !!opts.print,
-        only: csv(opts.only),
+        only: answers.only,
         skip: csv(opts.skip),
       });
 
       process.stdout.write(res.summary + '\n');
+      if (res.warnings.length) process.stdout.write('\nWarnings:\n' + res.warnings.map((w: string) => `- ${w}`).join('\n') + '\n');
+      if (res.written.length) process.stdout.write('\nWritten:\n' + res.written.map((w: string) => `- ${w}`).join('\n') + '\n');
+      if (res.skipped.length) process.stdout.write('\nSkipped:\n' + res.skipped.map((w: string) => `- ${w}`).join('\n') + '\n');
       if (res.diffs.length) {
         process.stdout.write('\nDiffs:\n');
         for (const d of res.diffs) process.stdout.write(d.patch + '\n');
@@ -120,14 +130,11 @@ program
       return;
     }
 
-    // Default command: scan (no subcommand)
-    if (!opts.write) {
+    // Non-interactive default: scan unless -w/--write.
+    if (!opts.write || opts.scan || opts.json) {
       const result = await scanRepo(opts.repo, opts.config);
-      if (opts.json) {
-        process.stdout.write(JSON.stringify(result, null, 2) + '\n');
-      } else {
-        process.stdout.write(formatScanReport(result));
-      }
+      if (opts.json) process.stdout.write(JSON.stringify(result, null, 2) + '\n');
+      else process.stdout.write(formatScanReport(result));
       return;
     }
 

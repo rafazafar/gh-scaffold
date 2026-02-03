@@ -38,7 +38,8 @@ describe('scaffold', () => {
     const scan = await scanRepo(repo);
     const out = formatScanReport(scan);
     expect(out).toContain('Next: to generate missing files');
-    expect(out).toContain('gh-scaffold apply --preset standard');
+    expect(out).toContain('gh-scaffold');
+    expect(out).toContain('gh-scaffold -w --preset standard');
     expect(out).toContain('--dry-run --diff');
   });
 
