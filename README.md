@@ -80,7 +80,7 @@ Overwrite existing:
 gh-scaffold -w --force
 ```
 
-Presets:
+Presets (mainly for non-interactive/CI runs):
 ```bash
 gh-scaffold -w --preset minimal
 gh-scaffold -w --preset standard

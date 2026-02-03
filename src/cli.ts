@@ -210,11 +210,11 @@ program
       {
         type: 'list',
         name: 'preset',
-        message: 'Preset:',
+        message: 'Default preset for non-interactive runs (-w/--write):',
         choices: [
-          { name: 'minimal (CONTRIBUTING, SECURITY, PR template)', value: 'minimal' },
-          { name: 'standard (+ issue templates, CoC, SUPPORT)', value: 'standard' },
-          { name: 'strict (+ CODEOWNERS, FUNDING, GOVERNANCE, LICENSE, etc.)', value: 'strict' },
+          { name: 'minimal', value: 'minimal' },
+          { name: 'standard', value: 'standard' },
+          { name: 'strict', value: 'strict' },
         ],
         default: loaded.config.preset ?? 'standard',
       },
