@@ -33,14 +33,19 @@ Scan current directory:
 gh-scaffold scan
 ```
 
+Interactive init:
+```bash
+gh-scaffold init
+```
+
 Apply missing files (no overwrites):
 ```bash
 gh-scaffold apply
 ```
 
-Dry run:
+Dry run + diff:
 ```bash
-gh-scaffold apply --dry-run
+gh-scaffold apply --dry-run --diff
 ```
 
 Overwrite existing:
@@ -48,9 +53,26 @@ Overwrite existing:
 gh-scaffold apply --force
 ```
 
-Minimal set only:
+Presets:
 ```bash
-gh-scaffold apply --minimal
+gh-scaffold apply --preset minimal
+gh-scaffold apply --preset standard
+gh-scaffold apply --preset strict
+```
+
+Issue templates format:
+```bash
+gh-scaffold apply --issue-templates forms
+```
+
+Update mode (managed markers):
+```bash
+gh-scaffold apply --update --diff
+```
+
+Monorepo scope:
+```bash
+gh-scaffold apply --scope packages
 ```
 
 ## Notes

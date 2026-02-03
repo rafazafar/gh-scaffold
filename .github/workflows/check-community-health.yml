@@ -1,0 +1,22 @@
+name: Community Health Check
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Fail if missing essentials
+        run: node dist/cli.js scan --repo . --json > scan.json
+      - name: Enforce (basic)
+        run: node -e "const r=require('fs').readFileSync('scan.json','utf8'); const j=JSON.parse(r); const essentials=['CONTRIBUTING','SECURITY','PULL_REQUEST_TEMPLATE','ISSUE_TEMPLATE_BUG','ISSUE_TEMPLATE_FEATURE']; const missing=essentials.filter(k=>j.missing.includes(k)); if(missing.length){console.error('Missing community health files:', missing.join(', ')); process.exit(1);} console.log('OK');"
