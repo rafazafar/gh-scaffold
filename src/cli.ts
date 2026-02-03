@@ -10,7 +10,67 @@ const program = new Command();
 program
   .name('gh-scaffold')
   .description('Scan a repo and generate missing GitHub community health files (.github templates, CONTRIBUTING, SECURITY, etc.)')
-  .version('0.2.0');
+  .version('0.3.0')
+  .option('-r, --repo <path>', 'Path to repo (default: current directory)', '.')
+  .option('-c, --config <path>', 'Path to config file (default: auto-detect)')
+  .option('--json', 'Output JSON (scan mode)', false)
+  .option('-w, --write', 'Write missing files (apply mode)', false)
+  .option('--preset <preset>', 'Preset (apply mode): minimal|standard|strict', 'standard')
+  .option('--issue-templates <format>', 'Issue templates (apply mode): markdown|forms', 'markdown')
+  .option('--templates <path>', 'Custom templates directory (apply mode)')
+  .option('--scope <mode>', 'Scope mode (apply mode): root|packages|all')
+  .option('--force', 'Overwrite existing files (apply mode)', false)
+  .option('--update', 'Update mode (apply mode; managed markers for markdown only)', false)
+  .option('--dry-run', 'Do not write files (apply mode)', false)
+  .option('--print', 'Print generated file contents to stdout (apply mode)', false)
+  .option('--diff', 'Show unified diffs (apply mode)', false)
+  .option('--only <keys>', 'Comma-separated keys to include (apply mode)', '')
+  .option('--skip <keys>', 'Comma-separated keys to skip (apply mode)', '')
+  .action(async (opts) => {
+    // Default command: scan (no subcommand)
+    if (!opts.write) {
+      const result = await scanRepo(opts.repo, opts.config);
+      if (opts.json) {
+        process.stdout.write(JSON.stringify(result, null, 2) + '\n');
+      } else {
+        process.stdout.write(formatScanReport(result));
+      }
+      return;
+    }
+
+    // Write mode: apply
+    const res = await applyScaffold({
+      repoPath: opts.repo,
+      configPath: opts.config,
+      preset: opts.preset,
+      issueTemplates: opts.issueTemplates,
+      templatesDir: opts.templates,
+      scopeMode: opts.scope,
+      force: !!opts.force,
+      update: !!opts.update,
+      dryRun: !!opts.dryRun,
+      print: !!opts.print,
+      diff: !!opts.diff,
+      only: csv(opts.only),
+      skip: csv(opts.skip),
+    });
+
+    process.stdout.write(res.summary + '\n');
+
+    if (res.warnings.length) {
+      process.stdout.write('\nWarnings:\n' + res.warnings.map((w: string) => `- ${w}`).join('\n') + '\n');
+    }
+    if (res.written.length) {
+      process.stdout.write('\nWritten:\n' + res.written.map((w: string) => `- ${w}`).join('\n') + '\n');
+    }
+    if (res.skipped.length) {
+      process.stdout.write('\nSkipped:\n' + res.skipped.map((w: string) => `- ${w}`).join('\n') + '\n');
+    }
+    if (res.diffs.length) {
+      process.stdout.write('\nDiffs:\n');
+      for (const d of res.diffs) process.stdout.write(d.patch + '\n');
+    }
+  });
 
 function csv(value?: string): string[] {
   if (!value) return [];
@@ -20,9 +80,10 @@ function csv(value?: string): string[] {
     .filter(Boolean);
 }
 
+// Back-compat alias (deprecated): `gh-scaffold scan`.
 program
   .command('scan')
-  .description('Scan a repository and print what is missing')
+  .description('[deprecated] Scan a repository and print what is missing (default command is now scan)')
   .option('-r, --repo <path>', 'Path to repo (default: current directory)', '.')
   .option('-c, --config <path>', 'Path to config file (default: auto-detect)')
   .option('--json', 'Output JSON', false)
@@ -135,23 +196,23 @@ program
     }
   });
 
+// Back-compat alias (deprecated): `gh-scaffold apply`.
 program
   .command('apply')
-  .description('Generate missing files into the repo (safe by default)')
+  .description('[deprecated] Generate missing files (use `-w/--write` instead)')
   .option('-r, --repo <path>', 'Path to repo (default: current directory)', '.')
   .option('-c, --config <path>', 'Path to config file (default: auto-detect)')
-  .option('--preset <preset>', 'Preset: minimal|standard|strict')
-  .option('--issue-templates <format>', 'Issue templates format: markdown|forms')
+  .option('--preset <preset>', 'Preset: minimal|standard|strict', 'standard')
+  .option('--issue-templates <format>', 'Issue templates format: markdown|forms', 'markdown')
   .option('--templates <path>', 'Custom templates directory')
   .option('--scope <mode>', 'Scope mode: root|packages|all')
   .option('--force', 'Overwrite existing files', false)
-  .option('--update', 'Update mode (managed markers, no overwrite)', false)
+  .option('--update', 'Update mode (managed markers for markdown only)', false)
   .option('--dry-run', 'Show what would be written, without writing', false)
   .option('--print', 'Print generated file contents to stdout', false)
   .option('--diff', 'Show unified diffs', false)
-  .option('--minimal', 'Only create essential files (legacy flag; same as preset=minimal)', false)
-  .option('--only <keys>', 'Comma-separated keys to include (e.g. SECURITY,CONTRIBUTING)', '')
-  .option('--skip <keys>', 'Comma-separated keys to skip (e.g. FUNDING,CODEOWNERS)', '')
+  .option('--only <keys>', 'Comma-separated keys to include', '')
+  .option('--skip <keys>', 'Comma-separated keys to skip', '')
   .action(async (opts) => {
     const res = await applyScaffold({
       repoPath: opts.repo,
@@ -161,7 +222,6 @@ program
       dryRun: !!opts.dryRun,
       print: !!opts.print,
       diff: !!opts.diff,
-      minimal: !!opts.minimal,
       preset: opts.preset,
       issueTemplates: opts.issueTemplates,
       templatesDir: opts.templates,
@@ -171,16 +231,9 @@ program
     });
 
     process.stdout.write(res.summary + '\n');
-
-    if (res.warnings.length) {
-      process.stdout.write('\nWarnings:\n' + res.warnings.map((w) => `- ${w}`).join('\n') + '\n');
-    }
-    if (res.written.length) {
-      process.stdout.write('\nWritten:\n' + res.written.map((w) => `- ${w}`).join('\n') + '\n');
-    }
-    if (res.skipped.length) {
-      process.stdout.write('\nSkipped:\n' + res.skipped.map((w) => `- ${w}`).join('\n') + '\n');
-    }
+    if (res.warnings.length) process.stdout.write('\nWarnings:\n' + res.warnings.map((w: string) => `- ${w}`).join('\n') + '\n');
+    if (res.written.length) process.stdout.write('\nWritten:\n' + res.written.map((w: string) => `- ${w}`).join('\n') + '\n');
+    if (res.skipped.length) process.stdout.write('\nSkipped:\n' + res.skipped.map((w: string) => `- ${w}`).join('\n') + '\n');
     if (res.diffs.length) {
       process.stdout.write('\nDiffs:\n');
       for (const d of res.diffs) process.stdout.write(d.patch + '\n');

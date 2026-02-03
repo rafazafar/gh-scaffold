@@ -44,14 +44,16 @@ node dist/cli.js --help
 
 ## Quick start
 
-Scan current directory:
+Scan current directory (default command):
 ```bash
-gh-scaffold scan
+gh-scaffold
+# or: npx gh-scaffold
 ```
 
-Generate files (safe: skips existing):
+Write missing files:
 ```bash
-gh-scaffold apply
+gh-scaffold -w
+# or: npx gh-scaffold -w
 ```
 
 Interactive init:
@@ -61,45 +63,45 @@ gh-scaffold init
 
 ## Common usage
 
-Dry run + diff:
+Preview what would change:
 ```bash
-gh-scaffold apply --dry-run --diff
+gh-scaffold --dry-run --diff -w
 ```
 
 Overwrite existing:
 ```bash
-gh-scaffold apply --force
+gh-scaffold -w --force
 ```
 
 Presets:
 ```bash
-gh-scaffold apply --preset minimal
-gh-scaffold apply --preset standard
-gh-scaffold apply --preset strict
+gh-scaffold -w --preset minimal
+gh-scaffold -w --preset standard
+gh-scaffold -w --preset strict
 ```
 
 Issue templates format:
 ```bash
-gh-scaffold apply --issue-templates markdown
-gh-scaffold apply --issue-templates forms
+gh-scaffold -w --issue-templates markdown
+gh-scaffold -w --issue-templates forms
 ```
 
 Update mode (Markdown-only managed markers; doesn’t touch non-markdown files):
 ```bash
-gh-scaffold apply --update --diff
+gh-scaffold -w --update --diff
 ```
 
 Monorepo scope:
 ```bash
-gh-scaffold apply --scope root
-gh-scaffold apply --scope packages
-gh-scaffold apply --scope all
+gh-scaffold -w --scope root
+gh-scaffold -w --scope packages
+gh-scaffold -w --scope all
 ```
 
 Only/skip certain targets:
 ```bash
-gh-scaffold apply --only SECURITY,CONTRIBUTING
-gh-scaffold apply --skip FUNDING,CODEOWNERS
+gh-scaffold -w --only SECURITY,CONTRIBUTING
+gh-scaffold -w --skip FUNDING,CODEOWNERS
 ```
 
 ## Config file
@@ -127,6 +129,10 @@ funding:
 ## CI enforcement
 This repo includes an example workflow that fails PRs if essential files are missing:
 - `.github/workflows/check-community-health.yml`
+
+## Backward compatibility
+- `gh-scaffold scan` still works (deprecated).
+- `gh-scaffold apply` still works (deprecated).
 
 ## Notes
 - Templates are intentionally generic; customize to your project.
