@@ -32,6 +32,14 @@
   ],
   "author": "",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rafazafar/gh-scaffold"
+  },
+  "homepage": "https://github.com/rafazafar/gh-scaffold#readme",
+  "bugs": {
+    "url": "https://github.com/rafazafar/gh-scaffold/issues"
+  },
   "engines": {
     "node": ">=18"
   },
