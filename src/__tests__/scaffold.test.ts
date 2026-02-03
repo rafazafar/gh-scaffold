@@ -110,7 +110,7 @@ describe('scaffold', () => {
     expect(res.warnings.length).toBeGreaterThan(0);
   });
 
-  it('update mode inserts managed block without overwriting whole file', async () => {
+  it('update mode inserts managed block without overwriting whole file (markdown only)', async () => {
     const repo = await makeTempDir();
     await writeRepoFile(repo, 'SECURITY.md', '# Security\n\nUser intro\n');
 
@@ -141,6 +141,28 @@ describe('scaffold', () => {
     const updated = await readRepoFile(repo, 'SECURITY.md');
     expect(updated).not.toContain('\nOLD\n');
     expect(updated).toContain('Security Policy');
+  });
+
+  it('update mode creates new markdown files already wrapped (idempotent)', async () => {
+    const repo = await makeTempDir();
+    await applyScaffold({ repoPath: repo, preset: 'minimal', update: true, only: ['SECURITY'] });
+    const first = await readRepoFile(repo, 'SECURITY.md');
+    expect(first).toContain('gh-scaffold:begin security');
+
+    await applyScaffold({ repoPath: repo, preset: 'minimal', update: true, only: ['SECURITY'] });
+    const second = await readRepoFile(repo, 'SECURITY.md');
+    // should not duplicate markers
+    expect(second.match(/gh-scaffold:begin security/g)?.length).toBe(1);
+  });
+
+  it('update mode does not add markers to non-markdown files', async () => {
+    const repo = await makeTempDir();
+    await applyScaffold({ repoPath: repo, preset: 'standard', update: true, only: ['ISSUE_TEMPLATE_CONFIG'] });
+    const cfg = await readRepoFile(repo, '.github/ISSUE_TEMPLATE/config.yml');
+    expect(cfg).not.toContain('gh-scaffold:begin');
+    // second run should skip
+    const res2 = await applyScaffold({ repoPath: repo, preset: 'standard', update: true, only: ['ISSUE_TEMPLATE_CONFIG'] });
+    expect(res2.skipped.some(s => s.includes('non-markdown'))).toBe(true);
   });
 
   it('strict preset writes extra files (license/changelog/etc)', async () => {

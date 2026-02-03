@@ -6,7 +6,7 @@ import { detectRepoMeta } from './detect.js';
 import { loadConfig } from './config.js';
 import type { PresetName, GhScaffoldConfig } from './config.js';
 import { resolveTemplatesDir, templateNameFor } from './templates.js';
-import { upsertManagedBlock } from './markers.js';
+import { upsertManagedBlock, wrapManagedBlock } from './markers.js';
 
 export type ScanResult = {
   repoPath: string;
@@ -272,8 +272,16 @@ async function applyToSingleRepo(repoPath: string, opts: ApplyOptions, config: G
       continue;
     }
 
+    const isMarkdown = /\.md$/i.test(rel);
+
     if (exists && update && !force) {
-      // Update mode: only touches managed block. If file has no managed block, append one.
+      // Update mode: managed markers are Markdown-only.
+      if (!isMarkdown) {
+        skipped.push(rel + ' (update skipped: non-markdown)');
+        continue;
+      }
+
+      // Only touches managed block. If file has no managed block, append one.
       const current = await fs.readFile(destAbs, 'utf8');
       const next = upsertManagedBlock(current, f.key.toLowerCase(), desired);
 
@@ -290,6 +298,11 @@ async function applyToSingleRepo(repoPath: string, opts: ApplyOptions, config: G
         written.push(rel + ' (update)');
       }
       continue;
+    }
+
+    if (!exists && update && !force && isMarkdown) {
+      // When creating a new Markdown file in update mode, create it already wrapped.
+      desired = wrapManagedBlock(f.key.toLowerCase(), desired);
     }
 
     if (exists && !force) {
