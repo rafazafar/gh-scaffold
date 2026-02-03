@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import fs from 'fs-extra';
 import path from 'node:path';
-import { scanRepo, applyScaffold } from '../scaffold.js';
+import { scanRepo, applyScaffold, formatScanReport } from '../scaffold.js';
 
 import { makeTempDir, readRepoFile, writeRepoFile } from './helpers.js';
 
@@ -31,6 +31,15 @@ describe('scaffold', () => {
     expect(res.written).toContain('CONTRIBUTING.md');
     expect(await fs.pathExists(path.resolve(repo, 'CONTRIBUTING.md'))).toBe(true);
     expect(await fs.pathExists(path.resolve(repo, '.github/PULL_REQUEST_TEMPLATE.md'))).toBe(true);
+  });
+
+  it('formatScanReport includes suggested next commands when missing', async () => {
+    const repo = await makeTempDir();
+    const scan = await scanRepo(repo);
+    const out = formatScanReport(scan);
+    expect(out).toContain('Next: to generate missing files');
+    expect(out).toContain('gh-scaffold apply --preset standard');
+    expect(out).toContain('--dry-run --diff');
   });
 
   it('diff and print work (and skipped is reported when file exists)', async () => {

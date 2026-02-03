@@ -149,6 +149,16 @@ export function formatScanReport(r: ScanResult): string {
     .map(f => f.key)
     .filter(k => r.missing.includes(k));
   lines.push('Missing essentials: ' + (essentialsMissing.length ? essentialsMissing.join(', ') : 'none'));
+
+  if (r.missing.length) {
+    lines.push('');
+    lines.push('Next: to generate missing files, run:');
+    lines.push('  gh-scaffold apply --preset standard');
+    lines.push('');
+    lines.push('Preview with diff (no writes):');
+    lines.push('  gh-scaffold apply --preset standard --dry-run --diff');
+  }
+
   lines.push('');
   return lines.join('\n') + '\n';
 }
