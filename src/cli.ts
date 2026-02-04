@@ -10,7 +10,7 @@ const program = new Command();
 program
   .name('gh-scaffold')
   .description('Scan a repo and generate missing GitHub community health files (.github templates, CONTRIBUTING, SECURITY, etc.)')
-  .version('1.0.2')
+  .version('1.0.3')
   .option('-r, --repo <path>', 'Path to repo (default: current directory)', '.')
   .option('-c, --config <path>', 'Path to config file (default: auto-detect)')
   .option('--json', 'Output JSON (scan mode)', false)
@@ -61,7 +61,7 @@ program
           validate: (arr: string[]) => (arr?.length ? true : 'Select at least one item.'),
         },
         {
-          type: 'list',
+          type: 'select',
           name: 'issueTemplates',
           message: 'Issue templates format:',
           choices: [
@@ -72,14 +72,15 @@ program
           when: (a: any) => a.only.includes('ISSUE_TEMPLATE_BUG') || a.only.includes('ISSUE_TEMPLATE_FEATURE') || a.only.includes('ISSUE_TEMPLATE_CONFIG'),
         },
         {
-          type: 'list',
+          type: 'select',
           name: 'license',
           message: 'License file:',
+          // Put the common ones first.
           choices: [
-            { name: 'none (skip LICENSE)', value: 'none' },
             { name: 'MIT', value: 'mit' },
             { name: 'Apache-2.0', value: 'apache-2.0' },
             { name: 'GPL-3.0', value: 'gpl-3.0' },
+            { name: 'none (skip LICENSE)', value: 'none' },
           ],
           default: loaded.config.license ?? opts.license ?? 'none',
           when: (a: any) => a.only.includes('LICENSE'),
