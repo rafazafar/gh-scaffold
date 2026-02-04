@@ -10,7 +10,7 @@ const program = new Command();
 program
   .name('gh-scaffold')
   .description('Scan a repo and generate missing GitHub community health files (.github templates, CONTRIBUTING, SECURITY, etc.)')
-  .version('1.0.0')
+  .version('1.0.2')
   .option('-r, --repo <path>', 'Path to repo (default: current directory)', '.')
   .option('-c, --config <path>', 'Path to config file (default: auto-detect)')
   .option('--json', 'Output JSON (scan mode)', false)
@@ -49,12 +49,15 @@ program
         return { name: p ? `${k}  (${p})` : k, value: k, checked: true };
       });
 
-      const answers = await inquirer.prompt([
+      // inquirer types don't currently include some runtime prompt options (e.g. `loop`)
+      const questions: any[] = [
         {
           type: 'checkbox',
           name: 'only',
           message: 'Select missing items to generate:',
           choices,
+          // Don't wrap from bottom back to top (avoids the "looping" feel in long lists)
+          loop: false,
           validate: (arr: string[]) => (arr?.length ? true : 'Select at least one item.'),
         },
         {
@@ -66,7 +69,7 @@ program
             { name: 'Issue Forms (.yml)', value: 'forms' },
           ],
           default: loaded.config.issueTemplates ?? opts.issueTemplates ?? 'markdown',
-          when: (a) => a.only.includes('ISSUE_TEMPLATE_BUG') || a.only.includes('ISSUE_TEMPLATE_FEATURE') || a.only.includes('ISSUE_TEMPLATE_CONFIG'),
+          when: (a: any) => a.only.includes('ISSUE_TEMPLATE_BUG') || a.only.includes('ISSUE_TEMPLATE_FEATURE') || a.only.includes('ISSUE_TEMPLATE_CONFIG'),
         },
         {
           type: 'list',
@@ -79,7 +82,7 @@ program
             { name: 'GPL-3.0', value: 'gpl-3.0' },
           ],
           default: loaded.config.license ?? opts.license ?? 'none',
-          when: (a) => a.only.includes('LICENSE'),
+          when: (a: any) => a.only.includes('LICENSE'),
         },
         {
           type: 'confirm',
@@ -99,7 +102,9 @@ program
           message: 'Overwrite existing files if present?',
           default: false,
         },
-      ]);
+      ];
+
+      const answers = await inquirer.prompt(questions);
 
       const res = await applyScaffold({
         repoPath: opts.repo,
